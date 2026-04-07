@@ -1,2 +1,2 @@
 # Iridis
-## Descripción breve  Approximate PBR image processor for Blender.
+## Approximate PBR image processor for Blender.
