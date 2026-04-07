@@ -21,6 +21,8 @@ def generate_albedo_map(common: dict, eff: dict) -> np.ndarray:
     lab_b = common["lab_b"]
     cavity = common["cavity_map"]
     highlight = common["highlight_candidate_map"]
+    highlight_sharp = common["highlight_sharpness_map"]
+    neutrality = common["neutrality_map"]
     border_falloff = common["border_falloff_map"]
     region_id_map = common["region_id_map"]
     region_stats = common["region_stats"]
@@ -53,10 +55,13 @@ def generate_albedo_map(common: dict, eff: dict) -> np.ndarray:
     )
 
     # Highlight suppression should spare colorful paint and rust a bit.
+    compact_spec = clamp01(highlight * 0.45 + highlight_sharp * 0.55)
     highlight_kill = clamp01(
-        highlight * highlight_suppression * (1.0 - paint_hint * 0.35)
+        compact_spec * highlight_suppression * (1.0 - paint_hint * 0.35)
     )
-    target_luma = clamp01(target_luma * (1.0 - highlight_kill * 0.42))
+    # Remove compact specular contamination while preserving broad paint color.
+    target_luma = clamp01(target_luma - (compact_spec * neutrality * highlight_suppression * 0.22))
+    target_luma = clamp01(target_luma * (1.0 - highlight_kill * 0.34))
 
     # Optional dirt cleanup in cavity, but conservative on rust.
     cavity_cleanup = cavity * dirt_cleanup * (1.0 - rust_hint * corrosion_expected * 0.65)
@@ -64,6 +69,7 @@ def generate_albedo_map(common: dict, eff: dict) -> np.ndarray:
 
     gray_safe = np.maximum(gray, 1e-4)
     luminance_scale = (target_luma / gray_safe)[:, :, None]
+    luminance_scale = np.clip(luminance_scale, 0.55, 1.55)
     flattened = rgb * ((1.0 - protect_map[:, :, None]) + protect_map[:, :, None] * luminance_scale)
 
     # Mild bilateral cleanup to reduce ugly photobake noise without killing edges.
