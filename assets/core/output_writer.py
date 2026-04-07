@@ -36,6 +36,14 @@ def _ensure_gray(image: np.ndarray) -> np.ndarray:
     return np.clip(image, 0.0, 1.0).astype(np.float32)
 
 
+def _ensure_alpha(alpha_map: np.ndarray | None, shape: tuple[int, int]) -> np.ndarray:
+    if alpha_map is None:
+        return np.ones((shape[0], shape[1], 1), dtype=np.float32)
+    if alpha_map.ndim != 2 or alpha_map.shape != shape:
+        raise ValueError("Alpha map must match image size and have shape (H, W)")
+    return np.clip(alpha_map, 0.0, 1.0).astype(np.float32)[:, :, None]
+
+
 def _save_float_image_rgba(filepath: str, rgba: np.ndarray):
     h, w, c = rgba.shape
     if c != 4:
@@ -58,20 +66,20 @@ def _save_float_image_rgba(filepath: str, rgba: np.ndarray):
         bpy.data.images.remove(img)
 
 
-def save_rgb_map(image: np.ndarray, output_dir: str, filename: str, overwrite: bool) -> str:
+def save_rgb_map(image: np.ndarray, output_dir: str, filename: str, overwrite: bool, alpha_map: np.ndarray | None = None) -> str:
     path = _resolve_output_path(output_dir, filename, overwrite)
     rgb = _ensure_rgb(image)
-    alpha = np.ones((rgb.shape[0], rgb.shape[1], 1), dtype=np.float32)
+    alpha = _ensure_alpha(alpha_map, rgb.shape[:2])
     rgba = np.concatenate((rgb, alpha), axis=2)
     _save_float_image_rgba(path, rgba)
     return path
 
 
-def save_gray_map(image: np.ndarray, output_dir: str, filename: str, overwrite: bool) -> str:
+def save_gray_map(image: np.ndarray, output_dir: str, filename: str, overwrite: bool, alpha_map: np.ndarray | None = None) -> str:
     path = _resolve_output_path(output_dir, filename, overwrite)
     gray = _ensure_gray(image)
     rgb = np.repeat(gray[:, :, None], 3, axis=2)
-    alpha = np.ones((gray.shape[0], gray.shape[1], 1), dtype=np.float32)
+    alpha = _ensure_alpha(alpha_map, gray.shape)
     rgba = np.concatenate((rgb, alpha), axis=2)
     _save_float_image_rgba(path, rgba)
     return path

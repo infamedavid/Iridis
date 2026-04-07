@@ -31,6 +31,10 @@ def compute_region_maps(common: dict, max_regions: int = 6) -> dict:
             "region_stats": region_stats,
         }
 
+    yy, xx = np.indices((h, w), dtype=np.float32)
+    xx = xx / max(1.0, float(w - 1))
+    yy = yy / max(1.0, float(h - 1))
+
     feats = np.stack([
         common["lab_l"][mask],
         common["lab_a"][mask] * 0.8,
@@ -38,6 +42,8 @@ def compute_region_maps(common: dict, max_regions: int = 6) -> dict:
         common["hsv_s"][mask] * 0.7,
         common["neutrality_map"][mask] * 0.7,
         common["local_contrast_map"][mask] * 0.5,
+        xx[mask] * 0.18,
+        yy[mask] * 0.18,
     ], axis=1).astype(np.float32)
 
     region_count = int(np.clip(max_regions, 2, 8))
@@ -52,18 +58,41 @@ def compute_region_maps(common: dict, max_regions: int = 6) -> dict:
     )
 
     labels = labels.reshape(-1)
-    region_id_map[mask] = labels + 1
+    base_region_map = np.zeros((h, w), dtype=np.int32)
+    base_region_map[mask] = labels + 1
+
+    # Split disconnected islands so "regional coherence" is spatially meaningful.
+    next_region_id = 1
+    for region_idx in range(region_count):
+        region_bin = (base_region_map == (region_idx + 1)).astype(np.uint8)
+        comp_count, comp_labels = cv2.connectedComponents(region_bin, connectivity=8)
+        for comp_id in range(1, comp_count):
+            comp_mask = comp_labels == comp_id
+            if np.count_nonzero(comp_mask) < 24:
+                continue
+            region_id_map[comp_mask] = next_region_id
+            next_region_id += 1
+
+    # Keep full mask covered, including tiny residual islands.
+    region_id_map[(mask) & (region_id_map <= 0)] = base_region_map[(mask) & (region_id_map <= 0)]
+
+    # Fallback if everything was tiny.
+    if next_region_id == 1:
+        region_id_map = base_region_map.copy()
 
     # Smooth region ids a bit inside the mask.
-    region_seed_map[mask] = (labels.astype(np.float32) + 1.0) / float(region_count)
+    id_max = max(1, int(region_id_map.max()))
+    region_seed_map[mask] = region_id_map[mask].astype(np.float32) / float(id_max)
     region_seed_map = cv2.GaussianBlur(region_seed_map, (5, 5), 0)
     region_seed_map *= common["work_mask"]
 
-    for region_idx in range(region_count):
-        reg_mask = region_id_map == (region_idx + 1)
+    for region_idx in np.unique(region_id_map):
+        if region_idx <= 0:
+            continue
+        reg_mask = region_id_map == region_idx
         if not np.any(reg_mask):
             continue
-        region_stats[region_idx + 1] = {
+        region_stats[int(region_idx)] = {
             "mean_saturation": float(np.mean(common["hsv_s"][reg_mask])),
             "mean_neutrality": float(np.mean(common["neutrality_map"][reg_mask])),
             "mean_luminance": float(np.mean(common["gray"][reg_mask])),
