@@ -16,7 +16,9 @@ def generate_metallic_map(common: dict, eff: dict) -> np.ndarray:
     hsv_s = common["hsv_s"]
     highlight = common["highlight_candidate_map"]
     edge_map = common["edge_map"]
+    highlight_sharp = common["highlight_sharpness_map"]
     dirt = common["dirt_candidate_map"]
+    cavity = common["cavity_map"]
     region_id_map = common["region_id_map"]
     region_stats = common["region_stats"]
 
@@ -29,29 +31,42 @@ def generate_metallic_map(common: dict, eff: dict) -> np.ndarray:
     corrosion_expected = eff["corrosion_expected"]
 
     color_penalty = hsv_s * color_rejection
+    compact_highlight = clamp01(highlight * 0.40 + highlight_sharp * 0.60)
+    paint_mass = clamp01(hsv_s * 0.65 + (1.0 - neutrality) * 0.35)
     score = np.full_like(neutrality, base, dtype=np.float32)
     score += neutrality * neutrality_w * 0.55
-    score += highlight * 0.18
+    score += compact_highlight * 0.16
     score += edge_map * edge_exposure * 0.22
 
     # Painted surfaces get pushed down except on edges.
-    score -= color_penalty * (0.50 + painted_expected * 0.20)
-    score -= dirt * corrosion_expected * 0.08
+    score -= color_penalty * (0.48 + painted_expected * 0.24)
+    score -= paint_mass * painted_expected * 0.20
+    score -= dirt * corrosion_expected * 0.10
+    score -= cavity * corrosion_expected * 0.06
 
     # Region logic.
     region_neutrality = _region_scalar_map(region_id_map, region_stats, "mean_neutrality")
     region_sat = _region_scalar_map(region_id_map, region_stats, "mean_saturation")
     region_cavity = _region_scalar_map(region_id_map, region_stats, "mean_cavity")
+    region_highlight = _region_scalar_map(region_id_map, region_stats, "mean_highlight")
+    region_contrast = _region_scalar_map(region_id_map, region_stats, "mean_contrast")
     regional_score = (
         base * 0.50 +
-        region_neutrality * neutrality_w * 0.50 -
-        region_sat * color_rejection * 0.45 -
-        region_cavity * corrosion_expected * 0.10
+        region_neutrality * neutrality_w * 0.48 +
+        region_highlight * 0.16 +
+        region_contrast * 0.06 -
+        region_sat * color_rejection * (0.42 + painted_expected * 0.10) -
+        region_cavity * corrosion_expected * 0.12
     )
     score = score * (1.0 - region_coh * 0.55) + regional_score * (region_coh * 0.55)
 
     # Exposed edges on painted surfaces recover some metallicity.
-    score += edge_map * painted_expected * edge_exposure * 0.18
+    score += edge_map * painted_expected * edge_exposure * 0.20
+
+    # Non-metal presets should stay close to zero metallic except tiny highlights/edges.
+    low_metal_prior = clamp01((0.20 - base) / 0.20)
+    nonmetal_kill = clamp01(low_metal_prior * (0.75 + color_rejection * 0.25))
+    score *= (1.0 - nonmetal_kill * 0.70)
 
     softness = eff["metallic_threshold_softness"]
     threshold = 0.52

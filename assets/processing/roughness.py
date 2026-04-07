@@ -44,16 +44,12 @@ def generate_roughness_map(common: dict, eff: dict) -> np.ndarray:
     region_id_map = common["region_id_map"]
     region_stats = common["region_stats"]
 
-    lab = common["lab"]
-    hsv = common["hsv"]
-
     # LAB normalized as in the rest of the pipeline:
     # L in [0..1], a and b roughly in [-1..1]
-    lab_a = lab[:, :, 1]
-    lab_b = lab[:, :, 2]
-
-    hsv_s = hsv[:, :, 1]
-    hsv_v = hsv[:, :, 2]
+    lab_a = common["lab_a"]
+    lab_b = common["lab_b"]
+    hsv_s = common["hsv_s"]
+    hsv_v = common["hsv_v"]
 
     base = eff["roughness_base"]
     micro_w = eff["roughness_microdetail_weight"]
@@ -74,13 +70,16 @@ def generate_roughness_map(common: dict, eff: dict) -> np.ndarray:
     rust_value_gate = clamp01(1.0 - np.abs(hsv_v - 0.55) * 1.35)
     rust_score = clamp01(rust_chroma * 0.60 + rust_sat * 0.25 + rust_value_gate * 0.15)
 
+    paint_score = clamp01(hsv_s * 0.65 + (1.0 - rust_chroma) * 0.35)
+
     # Smooth exposed metal hint:
     # neutral, less rusty, not too dirty/cavity-heavy, some highlight evidence
-    compact_highlight = clamp01(highlight * 0.55 + highlight_sharp * 0.45)
+    compact_highlight = clamp01(highlight * 0.40 + highlight_sharp * 0.60)
     smooth_metal_score = clamp01(
         neutrality * 0.55
-        + compact_highlight * 0.35
+        + compact_highlight * 0.40
         - rust_score * 0.45
+        - paint_score * 0.20
         - dirt * 0.25
         - cavity * 0.20
     )
@@ -95,7 +94,13 @@ def generate_roughness_map(common: dict, eff: dict) -> np.ndarray:
     dirt_comp = _compress_signal(dirt, threshold=0.05, gain=1.8, gamma=1.00)
 
     # Detail should matter much more in rust / dirt than on cleaner exposed metal
-    detail_selector = clamp01(0.20 + rust_score * 0.70 + dirt_comp * 0.35 + cavity_comp * 0.20)
+    detail_selector = clamp01(
+        0.14 +
+        rust_score * 0.65 +
+        dirt_comp * 0.32 +
+        cavity_comp * 0.22 -
+        compact_highlight * 0.15
+    )
 
     # -------------------------------------------------------------------------
     # 3) Base roughness build
@@ -105,14 +110,14 @@ def generate_roughness_map(common: dict, eff: dict) -> np.ndarray:
 
     # Rust and dirt are the main roughness drivers in this kind of surface
     rough += rust_score * (0.22 + 0.30 * corrosion_expected)
-    rough += dirt_comp * (0.14 + 0.24 * dirt_expected)
+    rough += dirt_comp * (0.12 + 0.24 * dirt_expected)
 
     # Cavity should act, but localized
     rough += cavity_comp * cavity_w * (0.12 + 0.18 * corrosion_expected)
 
     # Fine detail should no longer whiten the whole plate
-    rough += detail_comp * detail_selector * micro_w * 0.18
-    rough += contrast_comp * detail_selector * micro_w * 0.10
+    rough += detail_comp * detail_selector * micro_w * 0.15
+    rough += contrast_comp * detail_selector * micro_w * 0.08
 
     # Smooth exposed neutral metal should pull roughness down
     rough -= smooth_metal_score * (0.16 + 0.24 * highlight_resp)
@@ -126,15 +131,32 @@ def generate_roughness_map(common: dict, eff: dict) -> np.ndarray:
 
     region_neutrality = _region_scalar_map(region_id_map, region_stats, "mean_neutrality")
     region_highlight = _region_scalar_map(region_id_map, region_stats, "mean_highlight")
+    region_sat = _region_scalar_map(region_id_map, region_stats, "mean_saturation")
+    region_cavity = _region_scalar_map(region_id_map, region_stats, "mean_cavity")
+    region_contrast = _region_scalar_map(region_id_map, region_stats, "mean_contrast")
+    region_rust = clamp01(
+        _region_scalar_map(region_id_map, region_stats, "mean_lab_a", 0.0) * 0.60 +
+        _region_scalar_map(region_id_map, region_stats, "mean_lab_b", 0.0) * 0.45
+    )
 
     regional_smooth_hint = clamp01(
         region_neutrality * 0.55
         + region_highlight * 0.30
-        - rust_score * 0.20
+        - region_rust * 0.25
+        - region_sat * 0.18
+        - region_cavity * 0.15
     )
 
     # Small extra pull down on likely smooth metallic regions
     rough -= regional_smooth_hint * region_coh * 0.08
+
+    # Region-level roughness lift where broad texture/cavity evidence exists.
+    regional_rough_lift = clamp01(
+        region_contrast * 0.45 +
+        region_cavity * 0.30 +
+        region_rust * 0.30
+    )
+    rough += regional_rough_lift * region_coh * 0.10
 
     # Blend toward regional mean so results are less speckled
     region_mean_map = _regional_mean_map(region_id_map, rough, default=base)
@@ -146,6 +168,16 @@ def generate_roughness_map(common: dict, eff: dict) -> np.ndarray:
 
     # Colored non-neutral regions get a slight push upward, but much milder than before
     rough += (1.0 - neutrality) * 0.03
+
+    # Avoid broad full-white roughness on smoother coherent regions unless corrosion is strong.
+    rough_cap = clamp01(
+        0.86 +
+        corrosion_expected * 0.10 +
+        dirt_expected * 0.05 +
+        rust_score * 0.06 -
+        smooth_metal_score * 0.12
+    )
+    rough = np.minimum(rough, rough_cap)
 
     rough = clamp01(rough)
 

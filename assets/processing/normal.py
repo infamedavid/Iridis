@@ -8,6 +8,7 @@ def generate_normal_map(common: dict, eff: dict) -> np.ndarray:
     mask = common["work_mask"]
     detail = common["detail_high"]
     mid = common["mid_tone"] - np.mean(common["mid_tone"])
+    local_contrast = common["local_contrast_map"]
     uv_distance = common["uv_distance_map"]
     border_falloff = common["border_falloff_map"]
 
@@ -15,7 +16,12 @@ def generate_normal_map(common: dict, eff: dict) -> np.ndarray:
     mid_weight = eff["normal_mid_weight"]
     smoothing = eff["normal_smoothing"]
 
-    relief = detail * detail_weight + mid * 0.30 * mid_weight
+    # Denoise detail before deriving normals to avoid crunchy micro-noise.
+    detail_smooth = cv2.GaussianBlur(detail, (3, 3), 0)
+    detail_hp = detail - detail_smooth
+    detail_clean = detail_smooth * 0.85 + detail_hp * 0.25
+
+    relief = detail_clean * detail_weight + mid * 0.32 * mid_weight
     blur_amount = max(1, int(1 + smoothing * 8))
     if blur_amount % 2 == 0:
         blur_amount += 1
@@ -24,9 +30,11 @@ def generate_normal_map(common: dict, eff: dict) -> np.ndarray:
     dx = cv2.Sobel(relief, cv2.CV_32F, 1, 0, ksize=3)
     dy = cv2.Sobel(relief, cv2.CV_32F, 0, 1, ksize=3)
 
-    strength = max(0.001, detail_weight * 1.6 + mid_weight * 0.5)
-    nx = -dx * strength
-    ny = -dy * strength
+    detail_gate = clamp01(local_contrast * 0.75 + np.abs(detail_clean) * 0.65)
+    strength = max(0.001, detail_weight * 1.35 + mid_weight * 0.55)
+    strength_map = strength * (0.35 + detail_gate * 0.65)
+    nx = -dx * strength_map
+    ny = -dy * strength_map
     if eff["normal_format"] == "DIRECTX":
         ny = -ny
     nz = np.ones_like(nx)
@@ -48,7 +56,7 @@ def generate_normal_map(common: dict, eff: dict) -> np.ndarray:
         np.full_like(mask, 1.0),
     ])
 
-    fade = clamp01(np.clip(uv_distance * 2.0, 0.0, 1.0) * border_falloff)
+    fade = clamp01(np.clip(uv_distance * 2.4, 0.0, 1.0) * border_falloff)
     normal = neutral * (1.0 - fade[:, :, None]) + normal * fade[:, :, None]
     normal = neutral * (1.0 - mask[:, :, None]) + normal * mask[:, :, None]
     return clamp01(normal)
