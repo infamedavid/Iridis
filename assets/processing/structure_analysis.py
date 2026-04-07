@@ -6,6 +6,7 @@ from .color_analysis import clamp01
 
 def compute_structure_maps(
     gray: np.ndarray,
+    illum_low: np.ndarray,
     hsv_s: np.ndarray,
     lab_a: np.ndarray,
     lab_b: np.ndarray,
@@ -43,10 +44,17 @@ def compute_structure_maps(
         0.10 * (1.0 - hsv_s)
     )
 
-    highlight_seed = clamp01((gray - 0.62) / 0.30)
-    sat_reject = clamp01(1.0 - hsv_s * 0.85)
+    local_mean = cv2.GaussianBlur(gray, (9, 9), 0)
+    local_excess = (gray - local_mean) / np.maximum(local_mean, 1e-4)
+    illum_excess = (gray - illum_low) / np.maximum(illum_low, 1e-4)
+    local_excess = clamp01((local_excess + 0.02) / 0.35)
+    illum_excess = clamp01((illum_excess + 0.02) / 0.42)
+    highlight_seed = clamp01(local_excess * 0.55 + illum_excess * 0.45)
+
+    # Do not over-reject saturated glossy paint/plastic.
+    sat_gate = clamp01(1.0 - hsv_s * 0.45)
     highlight_candidate_map = clamp01(
-        highlight_seed * (0.70 * sat_reject + 0.30 * local_contrast_map)
+        highlight_seed * (0.58 * sat_gate + 0.42 * local_contrast_map)
     )
 
     blur_small = cv2.GaussianBlur(highlight_candidate_map, (5, 5), 0)

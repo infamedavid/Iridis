@@ -30,12 +30,16 @@ def generate_dirt_mask(common: dict, eff: dict) -> np.ndarray:
     return dirt * common["work_mask"]
 
 
-def generate_metal_mask(metallic_map: np.ndarray, common: dict) -> np.ndarray:
-    return clamp01(
-        metallic_map * 0.75 +
-        common["neutrality_map"] * 0.15 +
-        common["edge_map"] * 0.10
-    ) * common["work_mask"]
+def generate_metal_mask(metallic_map: np.ndarray, common: dict, eff: dict) -> np.ndarray:
+    base = eff["metallic_base_probability"]
+    low_metal_prior = clamp01((0.20 - base) / 0.20)
+    support = clamp01(
+        metallic_map * 0.90 +
+        common["neutrality_map"] * 0.07 +
+        common["edge_map"] * 0.03
+    )
+    support *= (1.0 - low_metal_prior * 0.80)
+    return support * common["work_mask"]
 
 
 def generate_edge_wear_mask(common: dict, eff: dict) -> np.ndarray:

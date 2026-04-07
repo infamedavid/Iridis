@@ -32,10 +32,11 @@ def build_common_buffers(rgb: np.ndarray, alpha: np.ndarray, work_mask: np.ndarr
         "neutrality_map": neutrality_map.astype(np.float32),
     }
 
-    common.update(compute_frequency_maps(gray))
+    common.update(compute_frequency_maps(gray, work_mask))
     common.update(
         compute_structure_maps(
             gray,
+            common["illum_low"],
             common["hsv_s"],
             common["lab_a"],
             common["lab_b"],
