@@ -208,3 +208,39 @@ class IRIDIS_PG_Settings(bpy.types.PropertyGroup):
         description="Print debug info to Blender console",
         default=False,
     )
+
+    protect_mask_image: bpy.props.PointerProperty(
+        name="Protect Mask",
+        description=(
+            "Controls where processing is applied. "
+            "White = process normally. Black = protect/exclude. Gray = partial influence"
+        ),
+        type=bpy.types.Image,
+    )
+
+    roughness_control_mask_image: bpy.props.PointerProperty(
+        name="Roughness Control Mask",
+        description=(
+            "Locally modulates roughness response. "
+            "Mid gray keeps slider behavior. White increases influence. Black reduces influence"
+        ),
+        type=bpy.types.Image,
+    )
+
+    metallic_control_mask_image: bpy.props.PointerProperty(
+        name="Metallic Control Mask",
+        description=(
+            "Locally modulates metallic response. "
+            "Mid gray keeps slider behavior. White increases influence. Black reduces influence"
+        ),
+        type=bpy.types.Image,
+    )
+
+    relief_control_mask_image: bpy.props.PointerProperty(
+        name="Relief Control Mask",
+        description=(
+            "Locally modulates Normal and Height response. "
+            "Mid gray keeps slider behavior. White increases influence. Black reduces influence"
+        ),
+        type=bpy.types.Image,
+    )

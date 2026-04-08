@@ -33,6 +33,7 @@ def _regional_mean_map(region_id_map: np.ndarray, value_map: np.ndarray, default
 
 def generate_roughness_map(common: dict, eff: dict) -> np.ndarray:
     mask = common["work_mask"]
+    roughness_control_mask = common.get("roughness_control_mask")
 
     detail_abs = common["detail_abs"]
     local_contrast = common["local_contrast_map"]
@@ -52,6 +53,10 @@ def generate_roughness_map(common: dict, eff: dict) -> np.ndarray:
     hsv_v = common["hsv_v"]
 
     base = eff["roughness_base"]
+    if roughness_control_mask is not None:
+        centered_mask = (roughness_control_mask - 0.5) * 2.0
+        local_roughness_bias = centered_mask * eff.get("roughness_bias_slider", 0.0)
+        base = (base - eff.get("roughness_bias_slider", 0.0) * 0.5) + local_roughness_bias
     micro_w = eff["roughness_microdetail_weight"]
     cavity_w = eff["roughness_cavity_weight"]
     highlight_resp = eff["roughness_highlight_response"]
@@ -106,7 +111,10 @@ def generate_roughness_map(common: dict, eff: dict) -> np.ndarray:
     # 3) Base roughness build
     # -------------------------------------------------------------------------
 
-    rough = np.full_like(detail_abs, base, dtype=np.float32)
+    if np.isscalar(base):
+        rough = np.full_like(detail_abs, base, dtype=np.float32)
+    else:
+        rough = base.astype(np.float32).copy()
 
     # Rust and dirt are the main roughness drivers in this kind of surface
     rough += rust_score * (0.22 + 0.30 * corrosion_expected)
