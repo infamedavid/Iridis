@@ -1,3 +1,4 @@
+import cv2
 import numpy as np
 
 from .color_analysis import clamp01
@@ -7,6 +8,20 @@ def _region_scalar_map(region_id_map: np.ndarray, region_stats: dict, key: str, 
     out = np.full(region_id_map.shape, default, dtype=np.float32)
     for region_id, stats in region_stats.items():
         out[region_id_map == region_id] = float(stats.get(key, default))
+    return out
+
+
+def _suppress_tiny_metal_islands(metallic: np.ndarray, mask: np.ndarray) -> np.ndarray:
+    hard = (metallic > 0.58).astype(np.uint8)
+    hard[mask <= 0.5] = 0
+    min_size = max(12, int(np.count_nonzero(mask > 0.5) * 0.0008))
+    comp_count, labels, stats, _centroids = cv2.connectedComponentsWithStats(hard, connectivity=8)
+    out = metallic.copy()
+    for comp_idx in range(1, comp_count):
+        if int(stats[comp_idx, cv2.CC_STAT_AREA]) >= min_size:
+            continue
+        sel = labels == comp_idx
+        out[sel] *= 0.35
     return out
 
 
@@ -82,5 +97,6 @@ def generate_metallic_map(common: dict, eff: dict) -> np.ndarray:
         metallic = (score > threshold).astype(np.float32)
     else:
         metallic = 1.0 / (1.0 + np.exp(-(score - threshold) / max(0.02, softness * 0.16)))
+    metallic = _suppress_tiny_metal_islands(clamp01(metallic), mask)
 
     return clamp01(metallic) * mask

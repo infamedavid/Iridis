@@ -4,6 +4,40 @@ import numpy as np
 from .color_analysis import clamp01
 
 
+def _majority_filter_labels(region_id_map: np.ndarray, mask: np.ndarray, ksize: int = 3) -> np.ndarray:
+    filtered = cv2.medianBlur(region_id_map.astype(np.uint8), ksize)
+    out = region_id_map.copy()
+    out[mask] = filtered[mask].astype(np.int32)
+    return out
+
+
+def _remove_tiny_components(region_id_map: np.ndarray, mask: np.ndarray, region_count: int) -> np.ndarray:
+    out = region_id_map.copy()
+    min_size = max(20, int(np.count_nonzero(mask) * 0.0012))
+    kernel = np.ones((3, 3), np.uint8)
+
+    for region_id in range(1, region_count + 1):
+        region_bin = ((out == region_id) & mask).astype(np.uint8)
+        if np.count_nonzero(region_bin) == 0:
+            continue
+        comp_count, labels, stats, _centroids = cv2.connectedComponentsWithStats(region_bin, connectivity=8)
+        for comp_idx in range(1, comp_count):
+            comp_size = int(stats[comp_idx, cv2.CC_STAT_AREA])
+            if comp_size >= min_size:
+                continue
+            comp_mask = labels == comp_idx
+            dilated = cv2.dilate(comp_mask.astype(np.uint8), kernel, iterations=1) > 0
+            ring = dilated & (~comp_mask) & mask
+            neighbor_ids = out[ring]
+            neighbor_ids = neighbor_ids[neighbor_ids > 0]
+            if neighbor_ids.size == 0:
+                continue
+            new_region = int(np.bincount(neighbor_ids).argmax())
+            out[comp_mask] = new_region
+
+    return out
+
+
 def compute_region_maps(common: dict, max_regions: int = 6) -> dict:
     mask = common["work_mask"] > 0.5
     h, w = common["gray"].shape
@@ -31,6 +65,10 @@ def compute_region_maps(common: dict, max_regions: int = 6) -> dict:
             "region_stats": region_stats,
         }
 
+    yy, xx = np.indices((h, w), dtype=np.float32)
+    x_norm = xx / max(1.0, float(w - 1))
+    y_norm = yy / max(1.0, float(h - 1))
+
     feats = np.stack([
         common["lab_l"][mask],
         common["lab_a"][mask] * 0.8,
@@ -38,6 +76,8 @@ def compute_region_maps(common: dict, max_regions: int = 6) -> dict:
         common["hsv_s"][mask] * 0.7,
         common["neutrality_map"][mask] * 0.7,
         common["local_contrast_map"][mask] * 0.5,
+        x_norm[mask] * 0.12,
+        y_norm[mask] * 0.12,
     ], axis=1).astype(np.float32)
 
     region_count = int(np.clip(max_regions, 2, 8))
@@ -53,9 +93,12 @@ def compute_region_maps(common: dict, max_regions: int = 6) -> dict:
 
     labels = labels.reshape(-1)
     region_id_map[mask] = labels + 1
+    region_id_map = _majority_filter_labels(region_id_map, mask, ksize=3)
+    region_id_map = _remove_tiny_components(region_id_map, mask, region_count)
+    region_id_map = _majority_filter_labels(region_id_map, mask, ksize=3)
 
     # Smooth region ids a bit inside the mask.
-    region_seed_map[mask] = (labels.astype(np.float32) + 1.0) / float(region_count)
+    region_seed_map[mask] = region_id_map[mask].astype(np.float32) / float(region_count)
     region_seed_map = cv2.GaussianBlur(region_seed_map, (5, 5), 0)
     region_seed_map *= common["work_mask"]
 
