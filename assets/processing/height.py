@@ -13,16 +13,28 @@ def generate_height_map(common: dict, eff: dict) -> np.ndarray:
     local_contrast = common["local_contrast_map"]
     region_id_map = common["region_id_map"]
     border_falloff = common["border_falloff_map"]
+    use_enhanced_relief = bool(common.get("enhanced_relief_enabled", False))
 
     detail_soft = cv2.GaussianBlur(detail, (3, 3), 0)
     detail_gate = clamp01(local_contrast * 0.70 + cavity * 0.30)
 
-    height = (
-        mid * eff["height_macro_weight"] +
-        detail_soft * detail_gate * 0.14 * eff["height_detail_weight"] +
-        cavity * 0.22 +
-        dark_residue * 0.12
-    )
+    if use_enhanced_relief:
+        mid_structure = common["mid_structure_map"]
+        relief_base = common["relief_base_map"]
+        height = (
+            relief_base * eff["height_macro_weight"] +
+            mid_structure * 0.30 +
+            detail_soft * detail_gate * 0.18 * eff["height_detail_weight"] +
+            cavity * 0.22 +
+            dark_residue * 0.12
+        )
+    else:
+        height = (
+            mid * eff["height_macro_weight"] +
+            detail_soft * detail_gate * 0.14 * eff["height_detail_weight"] +
+            cavity * 0.22 +
+            dark_residue * 0.12
+        )
 
     # Region coherence to reduce speckled high-frequency garbage.
     region_mean = np.zeros_like(height, dtype=np.float32)

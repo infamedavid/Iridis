@@ -67,6 +67,12 @@ class IRIDIS_PG_Settings(bpy.types.PropertyGroup):
         default=False,
     )
 
+    enable_heavier_relief: bpy.props.BoolProperty(
+        name="Heavier Relief (Normal/Height)",
+        description="Enable optional heavier relief path for normal and height maps",
+        default=False,
+    )
+
     delight_strength: bpy.props.FloatProperty(
         name="Delight Strength",
         description="Low-frequency lighting removal strength for albedo",

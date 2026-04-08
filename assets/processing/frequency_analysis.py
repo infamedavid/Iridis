@@ -11,7 +11,7 @@ def _odd_kernel_from_scale(size: int, scale: float, minimum: int) -> int:
     return k
 
 
-def compute_frequency_maps(gray: np.ndarray) -> dict:
+def compute_frequency_maps(gray: np.ndarray, enable_heavier_relief: bool = False) -> dict:
     height, width = gray.shape[:2]
     mindim = min(width, height)
 
@@ -33,10 +33,18 @@ def compute_frequency_maps(gray: np.ndarray) -> dict:
     if local_contrast.max() > 0.0:
         local_contrast = local_contrast / local_contrast.max()
 
-    return {
+    maps = {
         "illum_low": clamp01(illum_low.astype(np.float32)),
         "mid_tone": clamp01(mid_tone.astype(np.float32)),
         "detail_high": detail_high.astype(np.float32),
         "detail_abs": clamp01(detail_abs.astype(np.float32)),
         "local_contrast_map": clamp01(local_contrast.astype(np.float32)),
     }
+
+    if enable_heavier_relief:
+        mid_structure = mid_tone - illum_low
+        relief_base = gray - illum_low
+        maps["mid_structure_map"] = mid_structure.astype(np.float32)
+        maps["relief_base_map"] = relief_base.astype(np.float32)
+
+    return maps
