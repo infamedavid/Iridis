@@ -11,7 +11,12 @@ from ..processing.structure_analysis import compute_structure_maps
 from ..processing.region_analysis import compute_region_maps
 
 
-def build_common_buffers(rgb: np.ndarray, alpha: np.ndarray, work_mask: np.ndarray) -> dict:
+def build_common_buffers(
+    rgb: np.ndarray,
+    alpha: np.ndarray,
+    work_mask: np.ndarray,
+    use_enhanced_relief_analysis: bool = False,
+) -> dict:
     gray = rgb_to_gray(rgb)
     hsv_h, hsv_s, hsv_v = rgb_to_hsv(rgb)
     lab_l, lab_a, lab_b = rgb_to_lab(rgb)
@@ -30,9 +35,16 @@ def build_common_buffers(rgb: np.ndarray, alpha: np.ndarray, work_mask: np.ndarr
         "hsv_s": hsv_s.astype(np.float32),
         "hsv_v": hsv_v.astype(np.float32),
         "neutrality_map": neutrality_map.astype(np.float32),
+        "use_enhanced_relief_analysis": bool(use_enhanced_relief_analysis),
     }
 
-    common.update(compute_frequency_maps(gray, work_mask))
+    common.update(
+        compute_frequency_maps(
+            gray,
+            work_mask,
+            use_enhanced_relief_analysis=use_enhanced_relief_analysis,
+        )
+    )
     common.update(
         compute_structure_maps(
             gray,

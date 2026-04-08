@@ -6,8 +6,7 @@ from .color_analysis import clamp01
 
 def generate_height_map(common: dict, eff: dict) -> np.ndarray:
     mask = common["work_mask"]
-    mid_structure = common["mid_structure_map"]
-    relief_base = common["relief_base_map"]
+    mid = common["mid_tone"] - common["illum_low"]
     detail = common["detail_high"]
     cavity = common["cavity_map"]
     dark_residue = common["dark_residue_map"]
@@ -18,13 +17,23 @@ def generate_height_map(common: dict, eff: dict) -> np.ndarray:
     detail_soft = cv2.GaussianBlur(detail, (3, 3), 0)
     detail_gate = clamp01(local_contrast * 0.70 + cavity * 0.30)
 
-    height = (
-        relief_base * (0.55 * eff["height_macro_weight"]) +
-        mid_structure * (0.35 * eff["height_macro_weight"]) +
-        detail_soft * detail_gate * 0.10 * eff["height_detail_weight"] +
-        cavity * 0.22 +
-        dark_residue * 0.12
-    )
+    if common.get("use_enhanced_relief_analysis", False):
+        mid_structure = common["mid_structure_map"]
+        relief_base = common["relief_base_map"]
+        height = (
+            relief_base * (0.55 * eff["height_macro_weight"]) +
+            mid_structure * (0.35 * eff["height_macro_weight"]) +
+            detail_soft * detail_gate * 0.10 * eff["height_detail_weight"] +
+            cavity * 0.22 +
+            dark_residue * 0.12
+        )
+    else:
+        height = (
+            mid * eff["height_macro_weight"] +
+            detail_soft * detail_gate * 0.14 * eff["height_detail_weight"] +
+            cavity * 0.22 +
+            dark_residue * 0.12
+        )
 
     # Region coherence to reduce speckled high-frequency garbage.
     region_mean = np.zeros_like(height, dtype=np.float32)
