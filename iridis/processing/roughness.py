@@ -1,6 +1,7 @@
 import numpy as np
 
 from .color_analysis import clamp01
+from .regional_stabilization import stabilize_binary_map
 
 
 def _region_scalar_map(region_id_map: np.ndarray, region_stats: dict, key: str, default: float = 0.0) -> np.ndarray:
@@ -188,5 +189,17 @@ def generate_roughness_map(common: dict, eff: dict) -> np.ndarray:
     rough = np.minimum(rough, rough_cap)
 
     rough = clamp01(rough)
+
+    if eff.get("enable_region_stabilization", False):
+        rough_binary = stabilize_binary_map(
+            value_map=rough,
+            region_id_map=region_id_map,
+            work_mask=mask,
+            threshold=0.56,
+            min_area_px=32,
+            region_mix=0.65,
+        )
+        rough = rough * 0.84 + rough_binary * 0.16
+        rough = clamp01(rough)
 
     return rough * mask

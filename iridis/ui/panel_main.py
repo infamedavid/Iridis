@@ -43,6 +43,7 @@ class IRIDIS_PT_main_panel(bpy.types.Panel):
         row.prop(settings, "generate_normal")
         row.prop(settings, "generate_height")
         box.prop(settings, "enable_heavier_relief")
+        box.prop(settings, "enable_region_stabilization")
 
         box = layout.box()
         box.label(text="Albedo")
