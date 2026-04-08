@@ -20,10 +20,6 @@ from ..processing import (
     generate_metallic_map,
     generate_normal_map,
     generate_height_map,
-    generate_cavity_mask,
-    generate_dirt_mask,
-    generate_metal_mask,
-    generate_edge_wear_mask,
 )
 
 
@@ -60,7 +56,6 @@ class IRIDIS_OT_process(bpy.types.Operator):
                 settings.generate_metallic,
                 settings.generate_normal,
                 settings.generate_height,
-                settings.generate_aux_masks,
             )):
                 self.report({'ERROR'}, "No output maps are enabled.")
                 return {'CANCELLED'}
@@ -118,8 +113,6 @@ class IRIDIS_OT_process(bpy.types.Operator):
             overwrite = settings.overwrite_existing
             saved = []
 
-            metallic_map = None
-
             if settings.generate_albedo:
                 self._debug(settings, "Generating albedo")
                 albedo = generate_albedo_map(common, eff)
@@ -132,12 +125,11 @@ class IRIDIS_OT_process(bpy.types.Operator):
                 path = save_gray_map(rough, out_dir, f"{base}_roughness.png", overwrite)
                 saved.append(path)
 
-            if settings.generate_metallic or settings.generate_aux_masks:
+            if settings.generate_metallic:
                 self._debug(settings, "Generating metallic")
                 metallic_map = generate_metallic_map(common, eff)
-                if settings.generate_metallic:
-                    path = save_gray_map(metallic_map, out_dir, f"{base}_metallic.png", overwrite)
-                    saved.append(path)
+                path = save_gray_map(metallic_map, out_dir, f"{base}_metallic.png", overwrite)
+                saved.append(path)
 
             if settings.generate_normal:
                 self._debug(settings, "Generating normal")
@@ -150,20 +142,6 @@ class IRIDIS_OT_process(bpy.types.Operator):
                 height = generate_height_map(common, eff)
                 path = save_gray_map(height, out_dir, f"{base}_height.png", overwrite)
                 saved.append(path)
-
-            if settings.generate_aux_masks:
-                self._debug(settings, "Generating auxiliary masks")
-                cavity_mask = generate_cavity_mask(common)
-                dirt_mask = generate_dirt_mask(common, eff)
-                if metallic_map is None:
-                    metallic_map = generate_metallic_map(common, eff)
-                metal_mask = generate_metal_mask(metallic_map, common)
-                edge_wear = generate_edge_wear_mask(common, eff)
-
-                saved.append(save_gray_map(cavity_mask, out_dir, f"{base}_cavity.png", overwrite))
-                saved.append(save_gray_map(dirt_mask, out_dir, f"{base}_dirt.png", overwrite))
-                saved.append(save_gray_map(metal_mask, out_dir, f"{base}_metalmask.png", overwrite))
-                saved.append(save_gray_map(edge_wear, out_dir, f"{base}_edgewear.png", overwrite))
 
             self._debug(settings, f"Saved files: {saved}")
             self.report({'INFO'}, f"Iridis generated {len(saved)} file(s).")

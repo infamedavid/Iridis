@@ -102,16 +102,6 @@ class IRIDIS_PG_Settings(bpy.types.PropertyGroup):
         default=True,
     )
 
-    generate_aux_masks: bpy.props.BoolProperty(
-        name="Auxiliary Masks",
-        description=(
-            "Controls whether extra helper masks are exported for look-dev workflows. "
-            "Raise it by turning this on when you want additional mask outputs for manual material tuning. "
-            "Lower it by turning this off when you only need the core map set."
-        ),
-        default=False,
-    )
-
     enable_heavier_relief: bpy.props.BoolProperty(
         name="Heavier Relief (Normal/Height)",
         description=(
