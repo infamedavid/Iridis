@@ -1,6 +1,7 @@
 import numpy as np
 
 from .color_analysis import clamp01
+from .regional_stabilization import stabilize_binary_map
 
 
 def _region_scalar_map(region_id_map: np.ndarray, region_stats: dict, key: str, default: float = 0.0) -> np.ndarray:
@@ -83,4 +84,15 @@ def generate_metallic_map(common: dict, eff: dict) -> np.ndarray:
     else:
         metallic = 1.0 / (1.0 + np.exp(-(score - threshold) / max(0.02, softness * 0.16)))
 
-    return clamp01(metallic) * mask
+    metallic = clamp01(metallic)
+    if eff.get("enable_region_stabilization", False):
+        metallic = stabilize_binary_map(
+            value_map=metallic,
+            region_id_map=region_id_map,
+            work_mask=mask,
+            threshold=threshold,
+            min_area_px=28,
+            region_mix=0.72,
+        )
+
+    return metallic * mask

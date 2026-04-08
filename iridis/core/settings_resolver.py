@@ -89,5 +89,6 @@ def resolve_effective_settings(settings, preset_profile: dict) -> dict:
     eff["corrosion_expected"] = clamp(preset_profile["corrosion_expected"])
     eff["painted_surface_expected"] = clamp(preset_profile["painted_surface_expected"])
     eff["exposed_edge_expected"] = clamp(preset_profile["exposed_edge_expected"])
+    eff["enable_region_stabilization"] = bool(settings.enable_region_stabilization)
 
     return eff
