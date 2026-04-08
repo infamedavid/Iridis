@@ -4,6 +4,7 @@ from ..core.image_io import (
     get_active_image_from_image_editor,
     read_image_to_numpy,
     build_work_mask,
+    read_mask_image_as_gray,
 )
 from ..core.output_writer import (
     ensure_output_dir,
@@ -71,10 +72,36 @@ class IRIDIS_OT_process(bpy.types.Operator):
             src = read_image_to_numpy(image)
             mask = build_work_mask(src["alpha"])
 
+            protect_mask = read_mask_image_as_gray(
+                settings.protect_mask_image,
+                src["width"],
+                src["height"],
+            )
+            if protect_mask is not None:
+                mask = (mask * protect_mask).astype(mask.dtype)
+
+            roughness_control_mask = read_mask_image_as_gray(
+                settings.roughness_control_mask_image,
+                src["width"],
+                src["height"],
+            )
+            metallic_control_mask = read_mask_image_as_gray(
+                settings.metallic_control_mask_image,
+                src["width"],
+                src["height"],
+            )
+            relief_control_mask = read_mask_image_as_gray(
+                settings.relief_control_mask_image,
+                src["width"],
+                src["height"],
+            )
+
             self._debug(settings, f"Image size: {src['width']}x{src['height']}")
             self._debug(settings, f"Preset: {settings.preset}")
             preset_profile = get_preset_profile(settings.preset)
             eff = resolve_effective_settings(settings, preset_profile)
+            eff["roughness_bias_slider"] = float(settings.roughness_bias)
+            eff["metallic_bias_slider"] = float(settings.metallic_bias)
 
             self._debug(settings, "Building common buffers")
             common = build_common_buffers(
@@ -83,6 +110,9 @@ class IRIDIS_OT_process(bpy.types.Operator):
                 mask,
                 enable_heavier_relief=settings.enable_heavier_relief,
             )
+            common["roughness_control_mask"] = roughness_control_mask
+            common["metallic_control_mask"] = metallic_control_mask
+            common["relief_control_mask"] = relief_control_mask
 
             base = settings.base_name.strip()
             overwrite = settings.overwrite_existing

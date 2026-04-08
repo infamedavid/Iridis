@@ -1,5 +1,6 @@
 import bpy
 import numpy as np
+import cv2
 
 
 def get_active_image_from_image_editor(context):
@@ -58,3 +59,23 @@ def build_work_mask(alpha: np.ndarray, threshold: float = 0.001):
         mask = np.ones_like(alpha, dtype=np.float32)
 
     return mask
+
+
+def read_mask_image_as_gray(image: bpy.types.Image, width: int, height: int) -> np.ndarray:
+    if image is None:
+        return None
+
+    src = read_image_to_numpy(image)
+    rgb = src["rgb"].astype(np.float32)
+
+    # Grayscale luminance in linearized [0, 1] space.
+    gray = (
+        rgb[:, :, 0] * 0.2126 +
+        rgb[:, :, 1] * 0.7152 +
+        rgb[:, :, 2] * 0.0722
+    ).astype(np.float32)
+
+    if gray.shape[0] != height or gray.shape[1] != width:
+        gray = cv2.resize(gray, (width, height), interpolation=cv2.INTER_LINEAR)
+
+    return np.clip(gray, 0.0, 1.0).astype(np.float32)

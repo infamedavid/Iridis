@@ -14,6 +14,22 @@ def generate_height_map(common: dict, eff: dict) -> np.ndarray:
     region_id_map = common["region_id_map"]
     border_falloff = common["border_falloff_map"]
     use_enhanced_relief = bool(common.get("enhanced_relief_enabled", False))
+    relief_control_mask = common.get("relief_control_mask")
+
+    local_macro_weight = eff["height_macro_weight"]
+    local_height_contrast = eff["height_contrast"]
+    if relief_control_mask is not None:
+        centered_mask = (relief_control_mask - 0.5) * 2.0
+        local_macro_weight = np.clip(
+            1.0 + centered_mask * (eff["height_macro_weight"] - 1.0),
+            0.0,
+            None,
+        ).astype(np.float32)
+        local_height_contrast = np.clip(
+            1.0 + centered_mask * (eff["height_contrast"] - 1.0),
+            0.0,
+            None,
+        ).astype(np.float32)
 
     detail_soft = cv2.GaussianBlur(detail, (3, 3), 0)
     detail_gate = clamp01(local_contrast * 0.70 + cavity * 0.30)
@@ -22,7 +38,7 @@ def generate_height_map(common: dict, eff: dict) -> np.ndarray:
         mid_structure = common["mid_structure_map"]
         relief_base = common["relief_base_map"]
         height = (
-            relief_base * eff["height_macro_weight"] +
+            relief_base * local_macro_weight +
             mid_structure * 0.30 +
             detail_soft * detail_gate * 0.18 * eff["height_detail_weight"] +
             cavity * 0.22 +
@@ -30,7 +46,7 @@ def generate_height_map(common: dict, eff: dict) -> np.ndarray:
         )
     else:
         height = (
-            mid * eff["height_macro_weight"] +
+            mid * local_macro_weight +
             detail_soft * detail_gate * 0.14 * eff["height_detail_weight"] +
             cavity * 0.22 +
             dark_residue * 0.12
@@ -52,6 +68,6 @@ def generate_height_map(common: dict, eff: dict) -> np.ndarray:
     if blur_amount % 2 == 0:
         blur_amount += 1
     height = cv2.GaussianBlur(height, (blur_amount, blur_amount), 0)
-    height = clamp01((height - 0.5) * eff["height_contrast"] + 0.5)
+    height = clamp01((height - 0.5) * local_height_contrast + 0.5)
     height *= border_falloff
     return height * mask

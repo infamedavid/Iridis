@@ -12,6 +12,7 @@ def _region_scalar_map(region_id_map: np.ndarray, region_stats: dict, key: str, 
 
 def generate_metallic_map(common: dict, eff: dict) -> np.ndarray:
     mask = common["work_mask"]
+    metallic_control_mask = common.get("metallic_control_mask")
     neutrality = common["neutrality_map"]
     hsv_s = common["hsv_s"]
     highlight = common["highlight_candidate_map"]
@@ -23,6 +24,10 @@ def generate_metallic_map(common: dict, eff: dict) -> np.ndarray:
     region_stats = common["region_stats"]
 
     base = eff["metallic_base_probability"]
+    if metallic_control_mask is not None:
+        centered_mask = (metallic_control_mask - 0.5) * 2.0
+        local_metallic_bias = centered_mask * eff.get("metallic_bias_slider", 0.0)
+        base = (base - eff.get("metallic_bias_slider", 0.0) * 0.5) + local_metallic_bias
     neutrality_w = eff["metallic_neutrality_weight"]
     color_rejection = eff["metallic_color_rejection"]
     region_coh = eff["metallic_region_coherence"]
@@ -33,7 +38,10 @@ def generate_metallic_map(common: dict, eff: dict) -> np.ndarray:
     color_penalty = hsv_s * color_rejection
     compact_highlight = clamp01(highlight * 0.40 + highlight_sharp * 0.60)
     paint_mass = clamp01(hsv_s * 0.65 + (1.0 - neutrality) * 0.35)
-    score = np.full_like(neutrality, base, dtype=np.float32)
+    if np.isscalar(base):
+        score = np.full_like(neutrality, base, dtype=np.float32)
+    else:
+        score = base.astype(np.float32).copy()
     score += neutrality * neutrality_w * 0.55
     score += compact_highlight * 0.16
     score += edge_map * edge_exposure * 0.22
