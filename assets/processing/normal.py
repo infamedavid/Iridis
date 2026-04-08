@@ -7,8 +7,7 @@ from .color_analysis import clamp01
 def generate_normal_map(common: dict, eff: dict) -> np.ndarray:
     mask = common["work_mask"]
     detail = common["detail_high"]
-    mid_structure = common["mid_structure_map"]
-    relief_base = common["relief_base_map"]
+    mid = common["mid_tone"] - common["illum_low"]
     local_contrast = common["local_contrast_map"]
     uv_distance = common["uv_distance_map"]
     border_falloff = common["border_falloff_map"]
@@ -22,7 +21,12 @@ def generate_normal_map(common: dict, eff: dict) -> np.ndarray:
     detail_hp = detail - detail_smooth
     detail_clean = detail_smooth * 0.85 + detail_hp * 0.25
 
-    relief = relief_base * (0.42 * mid_weight) + detail_clean * detail_weight + mid_structure * (0.18 * mid_weight)
+    if common.get("use_enhanced_relief_analysis", False):
+        mid_structure = common["mid_structure_map"]
+        relief_base = common["relief_base_map"]
+        relief = relief_base * (0.42 * mid_weight) + detail_clean * detail_weight + mid_structure * (0.18 * mid_weight)
+    else:
+        relief = detail_clean * detail_weight + mid * 0.32 * mid_weight
     blur_amount = max(1, int(1 + smoothing * 8))
     if blur_amount % 2 == 0:
         blur_amount += 1

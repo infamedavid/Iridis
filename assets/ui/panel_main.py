@@ -28,6 +28,7 @@ class IRIDIS_PT_main_panel(bpy.types.Panel):
         box.prop(settings, "preset")
         box.prop(settings, "output_dir")
         box.prop(settings, "base_name")
+        box.prop(settings, "use_enhanced_relief_analysis")
         row = box.row(align=True)
         row.prop(settings, "overwrite_existing")
         row.prop(settings, "generate_aux_masks")

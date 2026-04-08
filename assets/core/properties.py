@@ -67,6 +67,12 @@ class IRIDIS_PG_Settings(bpy.types.PropertyGroup):
         default=False,
     )
 
+    use_enhanced_relief_analysis: bpy.props.BoolProperty(
+        name="Use enhanced relief analysis",
+        description="Improves normal and height generation. Processing may take longer and Blender may become temporarily unresponsive on some textures.",
+        default=False,
+    )
+
     delight_strength: bpy.props.FloatProperty(
         name="Delight Strength",
         description="Low-frequency lighting removal strength for albedo",
