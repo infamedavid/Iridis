@@ -43,6 +43,7 @@ class IRIDIS_PT_main_panel(bpy.types.Panel):
         row.prop(settings, "generate_metallic")
         row.prop(settings, "generate_normal")
         row.prop(settings, "generate_height")
+        box.prop(settings, "enable_heavier_relief")
 
         box = layout.box()
         box.label(text="Albedo")

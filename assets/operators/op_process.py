@@ -77,7 +77,12 @@ class IRIDIS_OT_process(bpy.types.Operator):
             eff = resolve_effective_settings(settings, preset_profile)
 
             self._debug(settings, "Building common buffers")
-            common = build_common_buffers(src["rgb"], src["alpha"], mask)
+            common = build_common_buffers(
+                src["rgb"],
+                src["alpha"],
+                mask,
+                enable_heavier_relief=settings.enable_heavier_relief,
+            )
 
             base = settings.base_name.strip()
             overwrite = settings.overwrite_existing
