@@ -23,6 +23,7 @@ def resolve_effective_settings(settings, preset_profile: dict) -> dict:
     eff["roughness_base"] = clamp(
         preset_profile["roughness_base"] + (settings.roughness_bias * 0.5)
     )
+    eff["roughness_bias_raw"] = float(settings.roughness_bias)
     eff["roughness_microdetail_weight"] = clamp(
         preset_profile["roughness_microdetail_weight"] * settings.microdetail_influence,
         0.0, 2.5,
@@ -42,6 +43,7 @@ def resolve_effective_settings(settings, preset_profile: dict) -> dict:
     eff["metallic_base_probability"] = clamp(
         preset_profile["metallic_base_probability"] + (settings.metallic_bias * 0.5)
     )
+    eff["metallic_bias_raw"] = float(settings.metallic_bias)
     eff["metallic_neutrality_weight"] = clamp(
         preset_profile["metallic_neutrality_weight"]
     )

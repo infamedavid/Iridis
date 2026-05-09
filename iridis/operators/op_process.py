@@ -95,8 +95,6 @@ class IRIDIS_OT_process(bpy.types.Operator):
             self._debug(settings, f"Preset: {settings.preset}")
             preset_profile = get_preset_profile(settings.preset)
             eff = resolve_effective_settings(settings, preset_profile)
-            eff["roughness_bias_slider"] = float(settings.roughness_bias)
-            eff["metallic_bias_slider"] = float(settings.metallic_bias)
 
             self._debug(settings, "Building common buffers")
             common = build_common_buffers(

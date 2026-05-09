@@ -56,8 +56,8 @@ def generate_roughness_map(common: dict, eff: dict) -> np.ndarray:
     base = eff["roughness_base"]
     if roughness_control_mask is not None:
         centered_mask = (roughness_control_mask - 0.5) * 2.0
-        local_roughness_bias = centered_mask * eff.get("roughness_bias_slider", 0.0)
-        base = (base - eff.get("roughness_bias_slider", 0.0) * 0.5) + local_roughness_bias
+        local_roughness_bias = centered_mask * eff.get("roughness_bias_raw", 0.0) * 0.5
+        base = np.clip(base + local_roughness_bias, 0.0, 1.0).astype(np.float32)
     micro_w = eff["roughness_microdetail_weight"]
     cavity_w = eff["roughness_cavity_weight"]
     highlight_resp = eff["roughness_highlight_response"]

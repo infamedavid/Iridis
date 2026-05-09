@@ -46,13 +46,14 @@ def _save_float_image_rgba(filepath: str, rgba: np.ndarray):
         width=w,
         height=h,
         alpha=True,
-        float_buffer=True,
+        float_buffer=False,
     )
 
     try:
         img.filepath_raw = filepath
         img.file_format = 'PNG'
-        img.pixels = rgba.ravel().tolist()
+        rgba = np.ascontiguousarray(rgba.astype(np.float32))
+        img.pixels.foreach_set(rgba.reshape(-1))
         img.save()
     finally:
         bpy.data.images.remove(img)

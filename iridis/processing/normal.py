@@ -63,7 +63,8 @@ def generate_normal_map(common: dict, eff: dict) -> np.ndarray:
         strength = np.clip(local_detail_weight * 1.35 + local_mid_weight * 0.55, 0.001, None)
     strength_map = strength * (0.35 + detail_gate * 0.65)
     nx = -dx * strength_map
-    ny = -dy * strength_map
+    # Blender orientation is preserved; DirectX only flips tangent-space Y vs OpenGL.
+    ny = dy * strength_map
     if eff["normal_format"] == "DIRECTX":
         ny = -ny
     nz = np.ones_like(nx)
