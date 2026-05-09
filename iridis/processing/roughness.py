@@ -4,6 +4,11 @@ from .color_analysis import clamp01
 from .regional_stabilization import stabilize_binary_map
 
 
+def _analysis_or_common(common: dict, key: str):
+    analysis_key = f"analysis_{key}"
+    return common.get(analysis_key, common[key])
+
+
 def _region_scalar_map(region_id_map: np.ndarray, region_stats: dict, key: str, default: float = 0.0) -> np.ndarray:
     out = np.full(region_id_map.shape, default, dtype=np.float32)
     for region_id, stats in region_stats.items():
@@ -36,22 +41,22 @@ def generate_roughness_map(common: dict, eff: dict) -> np.ndarray:
     mask = common["work_mask"]
     roughness_control_mask = common.get("roughness_control_mask")
 
-    detail_abs = common["detail_abs"]
-    local_contrast = common["local_contrast_map"]
-    cavity = common["cavity_map"]
-    dirt = common["dirt_candidate_map"]
-    highlight = common["highlight_candidate_map"]
-    highlight_sharp = common["highlight_sharpness_map"]
-    neutrality = common["neutrality_map"]
-    region_id_map = common["region_id_map"]
-    region_stats = common["region_stats"]
+    detail_abs = _analysis_or_common(common, "detail_abs")
+    local_contrast = _analysis_or_common(common, "local_contrast_map")
+    cavity = _analysis_or_common(common, "cavity_map")
+    dirt = _analysis_or_common(common, "dirt_candidate_map")
+    highlight = _analysis_or_common(common, "highlight_candidate_map")
+    highlight_sharp = _analysis_or_common(common, "highlight_sharpness_map")
+    neutrality = _analysis_or_common(common, "neutrality_map")
+    region_id_map = _analysis_or_common(common, "region_id_map")
+    region_stats = _analysis_or_common(common, "region_stats")
 
     # LAB normalized as in the rest of the pipeline:
     # L in [0..1], a and b roughly in [-1..1]
-    lab_a = common["lab_a"]
-    lab_b = common["lab_b"]
-    hsv_s = common["hsv_s"]
-    hsv_v = common["hsv_v"]
+    lab_a = _analysis_or_common(common, "lab_a")
+    lab_b = _analysis_or_common(common, "lab_b")
+    hsv_s = _analysis_or_common(common, "hsv_s")
+    hsv_v = _analysis_or_common(common, "hsv_v")
 
     base = eff["roughness_base"]
     if roughness_control_mask is not None:

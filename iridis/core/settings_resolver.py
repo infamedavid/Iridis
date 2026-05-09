@@ -92,5 +92,7 @@ def resolve_effective_settings(settings, preset_profile: dict) -> dict:
     eff["painted_surface_expected"] = clamp(preset_profile["painted_surface_expected"])
     eff["exposed_edge_expected"] = clamp(preset_profile["exposed_edge_expected"])
     eff["enable_region_stabilization"] = bool(settings.enable_region_stabilization)
+    eff["enable_lighting_stabilization"] = bool(settings.enable_lighting_stabilization)
+    eff["lighting_stabilization_strength"] = clamp(settings.lighting_stabilization_strength)
 
     return eff
