@@ -4,6 +4,11 @@ from .color_analysis import clamp01
 from .regional_stabilization import stabilize_binary_map
 
 
+def _analysis_or_common(common: dict, key: str):
+    analysis_key = f"analysis_{key}"
+    return common.get(analysis_key, common[key])
+
+
 def _region_scalar_map(region_id_map: np.ndarray, region_stats: dict, key: str, default: float = 0.0) -> np.ndarray:
     out = np.full(region_id_map.shape, default, dtype=np.float32)
     for region_id, stats in region_stats.items():
@@ -14,15 +19,15 @@ def _region_scalar_map(region_id_map: np.ndarray, region_stats: dict, key: str, 
 def generate_metallic_map(common: dict, eff: dict) -> np.ndarray:
     mask = common["work_mask"]
     metallic_control_mask = common.get("metallic_control_mask")
-    neutrality = common["neutrality_map"]
-    hsv_s = common["hsv_s"]
-    highlight = common["highlight_candidate_map"]
-    edge_map = common["edge_map"]
-    highlight_sharp = common["highlight_sharpness_map"]
-    dirt = common["dirt_candidate_map"]
-    cavity = common["cavity_map"]
-    region_id_map = common["region_id_map"]
-    region_stats = common["region_stats"]
+    neutrality = _analysis_or_common(common, "neutrality_map")
+    hsv_s = _analysis_or_common(common, "hsv_s")
+    highlight = _analysis_or_common(common, "highlight_candidate_map")
+    edge_map = _analysis_or_common(common, "edge_map")
+    highlight_sharp = _analysis_or_common(common, "highlight_sharpness_map")
+    dirt = _analysis_or_common(common, "dirt_candidate_map")
+    cavity = _analysis_or_common(common, "cavity_map")
+    region_id_map = _analysis_or_common(common, "region_id_map")
+    region_stats = _analysis_or_common(common, "region_stats")
 
     base = eff["metallic_base_probability"]
     if metallic_control_mask is not None:

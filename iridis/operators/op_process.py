@@ -102,6 +102,8 @@ class IRIDIS_OT_process(bpy.types.Operator):
                 src["alpha"],
                 mask,
                 enable_heavier_relief=settings.enable_heavier_relief,
+                enable_lighting_stabilization=eff.get("enable_lighting_stabilization", False),
+                lighting_stabilization_strength=eff.get("lighting_stabilization_strength", 0.65),
             )
             common["roughness_control_mask"] = roughness_control_mask
             common["metallic_control_mask"] = metallic_control_mask

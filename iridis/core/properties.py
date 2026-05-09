@@ -112,6 +112,24 @@ class IRIDIS_PG_Settings(bpy.types.PropertyGroup):
         default=False,
     )
 
+    enable_lighting_stabilization: bpy.props.BoolProperty(
+        name="Stabilize Lighting",
+        description=(
+            "Reduces broad lighting gradients before material analysis. Useful for photos or internet images with uneven illumination. Disabled by default."
+        ),
+        default=False,
+    )
+
+    lighting_stabilization_strength: bpy.props.FloatProperty(
+        name="Lighting Strength",
+        description=(
+            "Controls how strongly broad illumination gradients are reduced for analysis. Higher values can help uneven photos, but may flatten real material variation."
+        ),
+        min=0.0,
+        max=1.0,
+        default=0.65,
+    )
+
     enable_region_stabilization: bpy.props.BoolProperty(
         name="Region Stabilization",
         description=(

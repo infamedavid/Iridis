@@ -46,6 +46,12 @@ class IRIDIS_PT_main_panel(bpy.types.Panel):
         box.prop(settings, "enable_region_stabilization")
 
         box = layout.box()
+        box.label(text="Advanced")
+        box.prop(settings, "enable_lighting_stabilization")
+        if settings.enable_lighting_stabilization:
+            box.prop(settings, "lighting_stabilization_strength")
+
+        box = layout.box()
         box.label(text="Albedo")
         box.prop(settings, "delight_strength")
         box.prop(settings, "highlight_suppression")
