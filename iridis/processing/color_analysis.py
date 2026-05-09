@@ -27,8 +27,8 @@ def rgb_to_lab(rgb: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     rgb_f = clamp01(rgb).astype(np.float32)
     lab = cv2.cvtColor(rgb_f, cv2.COLOR_RGB2LAB).astype(np.float32)
     l = clamp01(lab[:, :, 0] / 100.0).astype(np.float32)
-    a = np.clip((lab[:, :, 1] - 128.0) / 127.0, -1.0, 1.0).astype(np.float32)
-    b = np.clip((lab[:, :, 2] - 128.0) / 127.0, -1.0, 1.0).astype(np.float32)
+    a = np.clip(lab[:, :, 1] / 127.0, -1.0, 1.0).astype(np.float32)
+    b = np.clip(lab[:, :, 2] / 127.0, -1.0, 1.0).astype(np.float32)
     return l, a, b
 
 
