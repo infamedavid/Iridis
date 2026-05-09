@@ -27,8 +27,8 @@ def generate_metallic_map(common: dict, eff: dict) -> np.ndarray:
     base = eff["metallic_base_probability"]
     if metallic_control_mask is not None:
         centered_mask = (metallic_control_mask - 0.5) * 2.0
-        local_metallic_bias = centered_mask * eff.get("metallic_bias_slider", 0.0)
-        base = (base - eff.get("metallic_bias_slider", 0.0) * 0.5) + local_metallic_bias
+        local_metallic_bias = centered_mask * eff.get("metallic_bias_raw", 0.0) * 0.5
+        base = np.clip(base + local_metallic_bias, 0.0, 1.0).astype(np.float32)
     neutrality_w = eff["metallic_neutrality_weight"]
     color_rejection = eff["metallic_color_rejection"]
     region_coh = eff["metallic_region_coherence"]

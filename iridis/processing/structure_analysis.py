@@ -30,9 +30,9 @@ def compute_structure_maps(
         dark_residue_map = dark_residue_map / dark_residue_map.max()
 
     cavity_map = clamp01(
-        0.50 * dark_residue_map +
-        0.30 * edge_map +
-        0.20 * local_contrast_map
+        0.65 * dark_residue_map +
+        0.20 * local_contrast_map +
+        0.15 * strong_edge_map * dark_residue_map
     )
 
     rust_bias = clamp01((lab_a * 0.65) + (lab_b * 0.45))

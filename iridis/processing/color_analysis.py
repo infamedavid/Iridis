@@ -15,20 +15,20 @@ def rgb_to_gray(rgb: np.ndarray) -> np.ndarray:
 
 
 def rgb_to_hsv(rgb: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    rgb8 = (clamp01(rgb) * 255.0).astype(np.uint8)
-    hsv = cv2.cvtColor(rgb8, cv2.COLOR_RGB2HSV).astype(np.float32)
-    hsv[:, :, 0] /= 179.0
-    hsv[:, :, 1] /= 255.0
-    hsv[:, :, 2] /= 255.0
-    return hsv[:, :, 0], hsv[:, :, 1], hsv[:, :, 2]
+    rgb_f = clamp01(rgb).astype(np.float32)
+    hsv = cv2.cvtColor(rgb_f, cv2.COLOR_RGB2HSV).astype(np.float32)
+    h = clamp01(hsv[:, :, 0] / 360.0).astype(np.float32)
+    s = clamp01(hsv[:, :, 1]).astype(np.float32)
+    v = clamp01(hsv[:, :, 2]).astype(np.float32)
+    return h, s, v
 
 
 def rgb_to_lab(rgb: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    rgb8 = (clamp01(rgb) * 255.0).astype(np.uint8)
-    lab = cv2.cvtColor(rgb8, cv2.COLOR_RGB2LAB).astype(np.float32)
-    l = lab[:, :, 0] / 255.0
-    a = (lab[:, :, 1] - 128.0) / 127.0
-    b = (lab[:, :, 2] - 128.0) / 127.0
+    rgb_f = clamp01(rgb).astype(np.float32)
+    lab = cv2.cvtColor(rgb_f, cv2.COLOR_RGB2LAB).astype(np.float32)
+    l = clamp01(lab[:, :, 0] / 100.0).astype(np.float32)
+    a = np.clip((lab[:, :, 1] - 128.0) / 127.0, -1.0, 1.0).astype(np.float32)
+    b = np.clip((lab[:, :, 2] - 128.0) / 127.0, -1.0, 1.0).astype(np.float32)
     return l, a, b
 
 

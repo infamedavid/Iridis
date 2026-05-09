@@ -25,16 +25,18 @@ def read_image_to_numpy(image: bpy.types.Image):
     if width <= 0 or height <= 0:
         raise ValueError("Active image has invalid dimensions.")
 
-    pixels = np.array(image.pixels[:], dtype=np.float32)
+    expected_rgba_size = width * height * 4
+    pixels = np.empty(expected_rgba_size, dtype=np.float32)
+    image.pixels.foreach_get(pixels)
 
-    if pixels.size == width * height * 4:
+    if pixels.size == expected_rgba_size:
         rgba = pixels.reshape((height, width, 4))
         rgb = rgba[:, :, :3].copy()
         alpha = rgba[:, :, 3].copy()
     elif pixels.size == width * height * 3:
-        rgb = pixels.reshape((height, width, 3))
+        rgb = pixels.reshape((height, width, 3)).astype(np.float32, copy=False)
         alpha = np.ones((height, width), dtype=np.float32)
-        rgba = np.dstack((rgb, alpha))
+        rgba = np.dstack((rgb, alpha)).astype(np.float32, copy=False)
     else:
         raise ValueError(
             f"Unexpected pixel buffer size. Got {pixels.size}, expected {width * height * 4} or {width * height * 3}."
